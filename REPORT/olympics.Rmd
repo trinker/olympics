@@ -1,0 +1,88 @@
+<link rel="stylesheet" href="./css/flip.css" />
+<link rel="stylesheet" href="./css/popup_style.css" />
+<link rel="stylesheet" href="./css/style.css" />
+<script type="text/javascript" src="./js/jquery-1.9.1.min.js"></script>
+<script type="text/javascript" src="./js/nhpup-ioshack_1.0.js"></script>
+<script type="text/javascript" src="./js/nhpup_1.0.js"></script>
+<script type="text/javascript" src="./js/nhpup_1.1.js"></script>
+<script type="text/javascript" src="./js/reports.js"></script>
+
+```{r setup, include=FALSE}
+# set global chunk options
+lapply(c("knitr", "RWordPress", "xtable", "reports", "knitcitations",'ggplot2', 
+	'XML', 'reshape2', "rCharts"), require, character.only = T)
+opts_chunk$set(cache = TRUE, warning = FALSE, message = FALSE, tidy = FALSE)
+
+pressNum_n_dir <- "61803503/wp/"   #e.g., "61803503/wp/"
+path2figureStorage <- "C:/Users/trinker/Dropbox/Public/wp/"   #e.g., "C:/Users/trinker/Dropbox/Public/wp/"
+opts_knit$set(base.url = paste0("http://dl.dropboxusercontent.com/u/", pressNum_n_dir),
+    base.dir = path2figureStorage)
+bib <- read.bibtex(dir()[tools::file_ext(dir()) == "bib"][1])
+```
+
+`r IW("http://3.bp.blogspot.com/-ZoD0jyPPn2c/T5ASxK-hXLI/AAAAAAAACQQ/EArxD8xnUYw/s1600/olympic%2Bsymbol.jpg", width=140, height=70,side = "right")` For those who are addicted to R and haven't the time to click the mouse on a web browser you too can still be informed about the results of the [2014 Sochi Winter Olympics](http://www.sochi2014.com/).  I was inspired by [a SO response](http://stackoverflow.com/questions/11712353/downloading-live-olympic-medal-data-into-r) around the London games a couple years back.
+
+## Packages to Load
+
+```{r, eval=FALSE}
+packs <- c("knitr", "ggplot2", "XML", "reshape2", "rCharts")
+lapply(packs, require, character.only = T)
+```	
+	
+# The Script
+
+```{r}
+olympics <- 
+function(theurl = "http://www.sochi2014.com/en/medal-standings", include.zero = FALSE) {
+
+    invisible(lapply(c('ggplot2', 'XML', 'reshape2') , require, character.only=TRUE))
+
+    ## Grab Data, Clean and Reshape
+    raw <- readHTMLTable(theurl, header=FALSE, colClasses = c(rep("factor", 2), rep("numeric", 4)))
+    raw <- as.data.frame(raw)[, -1]
+    colnames(raw) <- c("Country", "Bronze", "Silver", "Gold", "Total")
+    raw <- raw[order(raw[, "Total"]), ]
+    if (!include.zero) {
+        raw <- raw[raw[, "Total"] != 0, ]
+    }
+    raw[, "Country"] <- factor(raw[, "Country"], levels = raw[, "Country"])
+	rownames(raw) <- NULL
+    mdat <- melt(raw, value.name = "Count", variable.name = "Place", id.var = "Country")
+    
+    ## Plot the Data
+    plot1 <- ggplot(mdat, aes(x = Count, y = Country, colour = Place)) +
+      geom_point() +
+      facet_grid(.~Place) + theme_bw()+
+      scale_colour_manual(values=c("#CC6600", "#999999", "#FFCC33", "#000000")) 
+    print(plot1)
+
+    return(invisible(raw))
+}
+```
+
+
+# The Visual Results
+
+```{r, fig.width=12, fig.height=4.5}
+x <- olympics()
+```
+
+# As a Data Table
+
+```{r, results = 'asis', comment = NA}
+dTable(x)$show('inline', include_assets = TRUE, cdn = TRUE)
+```
+<br>
+
+WordPress and Data Table don't play well together so you'll need to run the code to see it in action.
+
+# Discussion
+
+I have chosen a dot plot to display the data because it's easy to quickly get a sense of the data yet be able to compare relatively easily.  Dot plots take advantage of the powerful pre-attentive attribute of distance (The most powerful way to visually convey quantitative information).  Stephen Few gives his two cents about dot plots [here](http://www.perceptualedge.com/articles/b-eye/dot_plots.pdf).
+
+I'm lazy but this would be a fun [Shiny app](http://www.rstudio.com/shiny/) to build.
+
+Thanks to @Ramnath for [help implementing](https://github.com/yihui/knitr/issues/717#issuecomment-34590101) the chart as a [jQuery DataTable](http://www.datatables.net/).
+
+
+<hr><em><font size="1">*Created using the `r HR2("https://github.com/trinker/reports", "reports")` package</font></em>
